@@ -1,0 +1,102 @@
+﻿@{
+    KaiutYoga.Models.KaiutYogaContext context = new KaiutYoga.Models.KaiutYogaContext();
+    KaiutYoga.Models.ClassModel cm = new KaiutYoga.Models.ClassModel();
+    List<KaiutYoga.Models.ClassModel> listclassmodel = cm.GetClasses(context).ToList();
+    List<KaiutYoga.Models.PresenceModel> listpresencemodel = context.PresenceModels.ToList();
+
+    <script>
+
+        function GenerateEvents(){
+            createdEvents = [
+                @foreach (KaiutYoga.Models.ClassModel classmodel in listclassmodel)
+                {
+                    <text>
+                    {
+                        title: 'Loading...',
+                        capacity: @classmodel.Capacity,
+                        start: '@classmodel.SelectedTime',
+                        backgroundColor : '@classmodel.ClassColor()',
+                        borderColor : '@classmodel.ClassColor()',
+                        classId: '@classmodel.Id',
+                        allDay: false,
+                        dow: [@Convert.ToInt16(classmodel.Day)]
+                    }
+                    </text>
+                    if (classmodel.Id != listclassmodel[listclassmodel.Count - 1].Id)
+                    {
+                        <text>,</text>
+                    }
+                }
+            ]
+
+            @if (listpresencemodel != null)
+            {
+                foreach (KaiutYoga.Models.PresenceModel pm in listpresencemodel)
+                {
+                    <text>blockedSpareEvents.push(@pm.ConvertToMilliseconds);</text>
+                }
+            }
+        }
+        
+        var x,y;
+        $(document).ready(function () {
+            $("#calendar").mousemove(function(e){x = e.pageX; y= e.pageY;})
+
+            var timeout;
+            GenerateEvents("calendar");
+
+            calendarHeight = window.innerHeight/2+272;
+            if (calendarHeight < 450)
+                calendarHeight = 450;
+
+            $('#calendar').fullCalendar({
+                header: {
+                    right: 'agendaWeek,agendaDay',//'month,agendaWeek,agendaDay',
+                    center: 'title' , //'center:'title',
+                    left: 'today prev,next' }, // buttons for switching between views
+                timeFormat: 'H:mm',
+                views:{
+                    month:{
+                        columnFormat:'ddd - MMM'
+                    },
+                },
+                defaultView: 'agendaWeek',
+                minTime: "07:00:00",
+                maxTime: "21:00:00",
+                theme:true,
+                defaultTimedEventDuration: '01:00:00',
+                fixedWeekCount : false,
+                allDaySlot: false,
+                axisFormat: 'H:mm',
+                hiddenDays:[0],
+                height:"auto",
+                eventSources: [createdEvents],
+                viewRender: function(view, element) {
+                    $('#calendar').fullCalendar('refetchEvents');
+                    GetAndPaintEventsWithPresence('calendar');
+                    CorrectEventTitle('calendar');
+                },
+                eventMouseover: function(calEvent, jsEvent) {
+                    document.body.style.cursor = "pointer";
+                    calEvent.pageX = jsEvent.pageX;
+                    calEvent.pageY = jsEvent.pageY;
+
+                    timeout = setTimeout(ToolTipTimeOut, 750, calEvent);
+                },
+
+                eventMouseout: function(calEvent, jsEvent) {
+                    clearTimeout(timeout);
+                    $(this).css('z-index', 8);
+                    document.body.style.cursor = "auto";
+                    $('.calendarTooltip').remove();
+                },
+                eventClick: function (event){
+                    window.open(window.applicationBaseUrl+"Class/Overview?id="+event.classId+"&date="+event.start,"_self");
+                }
+            })
+
+        });
+        
+    </script>
+    <div id='calendar'></div>
+}
